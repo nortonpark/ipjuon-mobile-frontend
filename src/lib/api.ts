@@ -28,6 +28,19 @@ export const api = {
     return res.json();
   },
 
+  delete: async (path: string, body?: unknown) => {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
+    return res.status === 204 ? null : res.json();
+  },
+
   patch: async (path: string, body?: unknown) => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "PATCH",
@@ -55,6 +68,10 @@ export const authApi = {
     }
     return data;
   },
+
+  // ✅ expireOtp 수정
+  expireOtp: (phone: string) =>
+    api.delete("/api/auth/otp/expire", { phone }),
 
   logout: () => {
     localStorage.removeItem("jwt_token");
