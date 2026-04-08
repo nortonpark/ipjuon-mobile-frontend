@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { defectApi } from "@/lib/api";
 import { useOfflineDrafts } from "@/hooks/useOfflineDrafts";
+import { residentApi } from "@/lib/api";
 
 interface DefectRow {
   receipt_no: string;
@@ -82,6 +83,16 @@ const HomePage = () => {
     { label: "입주", status: "pending" as const },
   ];
 
+  const [dong, setDong] = useState("");
+  const [ho, setHo] = useState("");
+
+  useEffect(() => {
+  residentApi.getMe().then((data) => {
+    setDong(data.dong || "");
+    setHo(data.ho || "");
+  }).catch(console.error);
+}, []);
+
   return (
     <MobileLayout>
       {/* D-Day Banner */}
@@ -143,7 +154,7 @@ const HomePage = () => {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium opacity-80">101동 1202호</p>
+              <p className="text-sm font-medium opacity-80">{dong}동 {ho}호</p>
               <span className="text-[10px] bg-primary/20 text-primary-foreground px-2 py-0.5 rounded-full font-medium">입주 예정</span>
             </div>
             <h2 className="text-lg font-bold mt-1">환영합니다!</h2>
