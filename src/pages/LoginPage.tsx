@@ -52,10 +52,13 @@ const LoginPage = () => {
     if (!phone) { toast.error("휴대폰 번호를 입력해주세요."); return; }
     setLoading(true);
     try {
-      await authApi.sendOtp(phone);
+      // await authApi.sendOtp(phone); // todo 운영에서 살림.
+      const res = await authApi.sendOtp(phone);
       toast.success("인증번호가 발송되었습니다.");
       setStep("otp");
       startTimer();
+      
+      if (res?.otp) setOtp(res.otp); // todo 테스트용 OTP 자동입력 (운영 시 제거)    
     } catch {
       toast.error("인증번호 발송에 실패했습니다. 번호를 확인해주세요.");
     } finally {
