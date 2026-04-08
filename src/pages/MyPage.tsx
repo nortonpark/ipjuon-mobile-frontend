@@ -71,7 +71,7 @@ const MyPage = () => {
   const handleProfileSave = async () => {
     setSaving(true);
     try {
-      await residentApi.updateNotifications({ phone, car_number: carNumber });
+      await residentApi.updateProfile({ phone, car_number: carNumber });
       toast.success("개인정보가 수정되었습니다.");
       setShowProfile(false);
     } catch {

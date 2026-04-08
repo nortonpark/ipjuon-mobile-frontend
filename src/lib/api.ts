@@ -87,6 +87,8 @@ export const residentApi = {
   getMe: () => api.get("/api/residents/me"),
   updateNotifications: (settings: Record<string, boolean>) =>
     api.patch("/api/residents/me/notifications", settings),
+  updateProfile: (data: { phone?: string; car_number?: string }) =>
+    api.patch("/api/residents/me/profile", data),
 };
 
 // 하자 관련
