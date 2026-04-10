@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PushNotifications } from "@capacitor/push-notifications";
+import { Capacitor } from "@capacitor/core";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import PaymentPage from "./pages/PaymentPage";
@@ -27,38 +30,75 @@ import OnboardingPage from "./pages/OnboardingPage";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-          <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
-          <Route path="/qr" element={<ProtectedRoute><QRPage /></ProtectedRoute>} />
-          <Route path="/reservation" element={<ProtectedRoute><ReservationPage /></ProtectedRoute>} />
-          <Route path="/notice" element={<ProtectedRoute><NoticePage /></ProtectedRoute>} />
-          <Route path="/notice/:id" element={<ProtectedRoute><NoticeDetailPage /></ProtectedRoute>} />
-          <Route path="/defect" element={<ProtectedRoute><DefectReportPage /></ProtectedRoute>} />
-          <Route path="/defect/:id" element={<ProtectedRoute><DefectDetailPage /></ProtectedRoute>} />
-          <Route path="/consent" element={<ProtectedRoute><ConsentPage /></ProtectedRoute>} />
-          <Route path="/certificate" element={<ProtectedRoute><CertificatePage /></ProtectedRoute>} />
-          <Route path="/loan" element={<ProtectedRoute><LoanPage /></ProtectedRoute>} />
-          <Route path="/registry" element={<ProtectedRoute><RegistryPage /></ProtectedRoute>} />
-          <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
-          <Route path="/interior" element={<ProtectedRoute><InteriorPage /></ProtectedRoute>} />
-          <Route path="/moving" element={<ProtectedRoute><MovingPage /></ProtectedRoute>} />
-          <Route path="/faq" element={<ProtectedRoute><FaqPage /></ProtectedRoute>} />
-          <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
-          <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// ─── 푸시 알림 초기화 ─────────────────────────────
+const initPushNotifications = async () => {
+  if (!Capacitor.isNativePlatform()) return;
+
+  const permission = await PushNotifications.requestPermissions();
+  if (permission.receive !== "granted") return;
+
+  await PushNotifications.register();
+
+  // FCM 토큰 수신
+  PushNotifications.addListener("registration", (token) => {
+    console.log("FCM Token:", token.value);
+    // TODO: 백엔드로 토큰 전송
+    // api.post("/api/residents/me/fcm-token", { token: token.value });
+  });
+
+  // 알림 수신 (포그라운드)
+  PushNotifications.addListener("pushNotificationReceived", (notification) => {
+    console.log("Push received:", notification);
+  });
+
+  // 알림 탭 (백그라운드에서 클릭)
+  PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+    console.log("Push action:", action);
+  });
+
+  PushNotifications.addListener("registrationError", (error) => {
+    console.error("FCM registration error:", error);
+  });
+};
+
+const App = () => {
+
+  useEffect(() => {
+    initPushNotifications();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+            <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
+            <Route path="/qr" element={<ProtectedRoute><QRPage /></ProtectedRoute>} />
+            <Route path="/reservation" element={<ProtectedRoute><ReservationPage /></ProtectedRoute>} />
+            <Route path="/notice" element={<ProtectedRoute><NoticePage /></ProtectedRoute>} />
+            <Route path="/notice/:id" element={<ProtectedRoute><NoticeDetailPage /></ProtectedRoute>} />
+            <Route path="/defect" element={<ProtectedRoute><DefectReportPage /></ProtectedRoute>} />
+            <Route path="/defect/:id" element={<ProtectedRoute><DefectDetailPage /></ProtectedRoute>} />
+            <Route path="/consent" element={<ProtectedRoute><ConsentPage /></ProtectedRoute>} />
+            <Route path="/certificate" element={<ProtectedRoute><CertificatePage /></ProtectedRoute>} />
+            <Route path="/loan" element={<ProtectedRoute><LoanPage /></ProtectedRoute>} />
+            <Route path="/registry" element={<ProtectedRoute><RegistryPage /></ProtectedRoute>} />
+            <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
+            <Route path="/interior" element={<ProtectedRoute><InteriorPage /></ProtectedRoute>} />
+            <Route path="/moving" element={<ProtectedRoute><MovingPage /></ProtectedRoute>} />
+            <Route path="/faq" element={<ProtectedRoute><FaqPage /></ProtectedRoute>} />
+            <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

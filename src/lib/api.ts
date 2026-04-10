@@ -82,6 +82,40 @@ export const authApi = {
   isLoggedIn: () => !!localStorage.getItem("jwt_token"),
 };
 
+
+// HOME, 메인화면 
+export interface DashboardData {
+  resident: {
+    dong: string;
+    ho: string;
+    move_in_date: string; // "2026-04-26"
+  };
+  readiness_percent: number;
+  checklist: {
+    id: number;
+    label: string;
+    done: boolean;
+    path: string;
+  }[];
+  steps: {
+    label: string;
+    status: "completed" | "current" | "pending";
+  }[];
+  notices: {
+    badge: string;
+    badge_type: "primary" | "success" | "warning";
+    title: string;
+    date: string;
+  }[];
+}
+
+// HOME 메인화면
+export const homeApi = {
+  getDashboard: (): Promise<DashboardData> =>
+    // api.get("/api/home/dashboard").then((r) => r.data),
+  api.get("/api/home/dashboard"),  // .then(r => r.data) 제거
+};
+
 // 입주민 관련
 export const residentApi = {
   getMe: () => api.get("/api/residents/me"),
@@ -122,3 +156,5 @@ export const movingApi = {
 export const qrApi = {
   getQr: () => api.get("/api/qr/me"),
 };
+
+

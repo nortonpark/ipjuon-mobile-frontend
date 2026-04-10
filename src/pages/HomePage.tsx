@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2, Circle, QrCode, CreditCard, AlertTriangle, ChevronRight, ClipboardList, ListChecks, Loader2, X, WifiOff, Upload, Check } from "lucide-react";
+import {
+  CheckCircle2, Circle, AlertTriangle, ChevronRight,
+  ClipboardList, ListChecks, Loader2, X, WifiOff, Upload, Check,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/MobileLayout";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { defectApi } from "@/lib/api";
+import { defectApi, homeApi } from "@/lib/api";
 import { useOfflineDrafts } from "@/hooks/useOfflineDrafts";
-import { residentApi } from "@/lib/api";
+import { DashboardData } from "@/lib/api";
 
+// ─── 타입 ─────────────────────────────────────────────
 interface DefectRow {
   receipt_no: string;
   location: string;
@@ -16,103 +20,143 @@ interface DefectRow {
   is_urgent: boolean;
 }
 
-const statusColorMap: Record<string, string> = {
-  "미배정": "text-muted-foreground",
-  "접수완료": "text-primary",
-  "배정완료": "text-primary",
-  "처리중": "text-warning",
-  "처리완료": "text-success",
-  "완료": "text-success",
+// ─── 상수 ─────────────────────────────────────────────
+const STATUS_COLOR: Record<string, string> = {
+  미배정: "text-muted-foreground",
+  접수완료: "text-primary",
+  배정완료: "text-primary",
+  처리중: "text-warning",
+  처리완료: "text-success",
+  완료: "text-success",
 };
 
-const getChecklistItems = () => [
-  { id: 1, label: "잔금 납부", done: true, path: "/payment" },
-  { id: 2, label: "사전점검 예약", done: true, path: "/reservation" },
-  { id: 3, label: "QR 입장코드 발급", done: true, path: "/qr" },
-  { id: 4, label: "이사 예약", done: localStorage.getItem("moveInReserved") === "true", path: "/reservation" },
-  { id: 5, label: "동의서 서명", done: localStorage.getItem("consentSigned") === "true", path: "/consent" },
+const BADGE_CLASS: Record<string, string> = {
+  primary: "bg-primary/15 text-primary",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+};
+
+const MOVE_IN_GUIDE = [
+  { icon: "🔑", title: "열쇠 수령",             desc: "입주지원센터 방문 → 신분증 + 입주증 지참" },
+  { icon: "🚗", title: "주차 배정 확인",         desc: "배정 주차구역 확인 후 차량 이동" },
+  { icon: "🔥", title: "가스 개통 신청",         desc: "도시가스 앱 또는 전화 신청 (당일 가능)" },
+  { icon: "💡", title: "전기·수도 명의 변경",    desc: "한전 고객센터 123 / 수도사업소 연락" },
+  { icon: "📦", title: "이사 완료 후 공용부 확인", desc: "엘리베이터·복도 파손 여부 확인" },
+  { icon: "💰", title: "관리비 예치금 납부",      desc: "미납 시 앱 납부 탭에서 확인" },
 ];
 
+const CIRCUMFERENCE = 2 * Math.PI * 34;
+
+// ─── 유틸 ─────────────────────────────────────────────
+const calcDday = (dateStr: string) => {
+  const diff = Math.ceil(
+    (new Date(dateStr).getTime() - Date.now()) / 86_400_000
+  );
+  if (diff > 0) return `D-${diff}`;
+  if (diff === 0) return "D-Day";
+  return `D+${Math.abs(diff)}`;
+};
+
+// ─── 공통 슬라이드 패널 ───────────────────────────────
+interface SlidePanelProps {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}
+
+const SlidePanel = ({ title, onClose, children, footer }: SlidePanelProps) => (
+  <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+    <div className="relative w-full max-w-[390px] bg-background rounded-t-2xl shadow-xl animate-slide-up max-h-[80vh] flex flex-col">
+      <div className="flex justify-center pt-3 pb-1">
+        <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+      </div>
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <h3 className="text-base font-bold text-foreground">{title}</h3>
+        <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground" /></button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+      {footer && <div className="px-5 py-4 border-t border-border">{footer}</div>}
+    </div>
+  </div>
+);
+
+// ─── 메인 컴포넌트 ────────────────────────────────────
 const HomePage = () => {
   const navigate = useNavigate();
   const { drafts, syncAll, syncing } = useOfflineDrafts();
-  const checklistItems = getChecklistItems();
-  const completedCount = checklistItems.filter((i) => i.done).length;
-  const progressPercent = Math.round((completedCount / checklistItems.length) * 100);
 
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [defects, setDefects] = useState<DefectRow[]>([]);
-  const [loadingDefects, setLoadingDefects] = useState(true);
+  const [loading, setLoading] = useState(true);
+
   const [showDefectList, setShowDefectList] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [showMoveInGuide, setShowMoveInGuide] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await defectApi.getList();
-        if (Array.isArray(data)) setDefects(data.slice(0, 10));
-      } catch {
-        // 오류 시 빈 목록 유지
-      } finally {
-        setLoadingDefects(false);
-      }
-    };
-    load();
+    Promise.all([
+      homeApi.getDashboard(),
+      defectApi.getList(),
+    ])
+      .then(([dash, defectList]) => {
+        console.log("dashboard:", dash);        // ← 추가
+        console.log("defects:", defectList);    // ← 추가        
+        setDashboard(dash);
+        if (Array.isArray(defectList)) setDefects(defectList.slice(0, 10));
+      })
+      .catch((e) => console.error("에러:", e)) // ← 수정
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading || !dashboard) {
+    return (
+      <MobileLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  const { resident, readiness_percent, checklist, steps, notices } = dashboard;
+
+  const completedCount = checklist.filter((i) => i.done).length;
+  const progressPercent = Math.round((completedCount / checklist.length) * 100);
+  const dashoffset = CIRCUMFERENCE * (1 - readiness_percent / 100);
+  const dday = calcDday(resident.move_in_date);
+  const moveInDateLabel = new Date(resident.move_in_date).toLocaleDateString("ko-KR", {
+    year: "numeric", month: "long", day: "numeric",
+  });
 
   const statusCounts = {
     접수완료: defects.filter((d) => ["미배정", "접수완료", "배정완료"].includes(d.status)).length,
-    처리중: defects.filter((d) => d.status === "처리중").length,
-    완료: defects.filter((d) => ["처리완료", "완료"].includes(d.status)).length,
+    처리중:   defects.filter((d) => d.status === "처리중").length,
+    완료:     defects.filter((d) => ["처리완료", "완료"].includes(d.status)).length,
   };
-
-  const targetDate = new Date("2026-04-26");
-  const today = new Date();
-  const diffDays = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  const dday = diffDays > 0 ? `D-${diffDays}` : diffDays === 0 ? "D-Day" : `D+${Math.abs(diffDays)}`;
-
-  const readinessPercent = 45;
-  const circumference = 2 * Math.PI * 34;
-  const dashoffset = circumference * (1 - readinessPercent / 100);
-
-  const steps = [
-    { label: "계약", status: "completed" as const },
-    { label: "납부", status: "completed" as const },
-    { label: "사전점검", status: "completed" as const },
-    { label: "이사예약", status: "current" as const },
-    { label: "입주", status: "pending" as const },
-  ];
-
-  const [dong, setDong] = useState("");
-  const [ho, setHo] = useState("");
-
-  useEffect(() => {
-  residentApi.getMe().then((data) => {
-    setDong(data.dong || "");
-    setHo(data.ho || "");
-  }).catch(console.error);
-}, []);
 
   return (
     <MobileLayout>
-      {/* D-Day Banner */}
+
+      {/* D-Day 배너 */}
       <div className="bg-gradient-to-r from-[#0f1923] to-[#2e86c1] rounded-2xl p-5 mx-0 mt-1 mb-3 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
             <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">입주 예정일</span>
             <p className="text-4xl font-black text-white mt-1">{dday}</p>
-            <p className="text-xs text-white/70 mt-0.5">2026년 4월 26일 입주</p>
+            <p className="text-xs text-white/70 mt-0.5">{moveInDateLabel} 입주</p>
           </div>
           <div className="flex flex-col items-center">
             <div className="w-20 h-20 relative">
               <svg width="80" height="80" viewBox="0 0 80 80">
                 <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.2)" strokeWidth="6" fill="none" />
                 <circle cx="40" cy="40" r="34" stroke="white" strokeWidth="6" fill="none"
-                  strokeDasharray={circumference} strokeDashoffset={dashoffset}
+                  strokeDasharray={CIRCUMFERENCE} strokeDashoffset={dashoffset}
                   strokeLinecap="round" transform="rotate(-90 40 40)" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-black text-white">{readinessPercent}%</span>
+                <span className="text-lg font-black text-white">{readiness_percent}%</span>
                 <span className="text-[9px] text-white/70">준비완료</span>
               </div>
             </div>
@@ -149,20 +193,16 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Greeting */}
+      {/* 인사말 */}
       <div className="bg-accent text-accent-foreground rounded-xl p-4 mb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium opacity-80">{dong}동 {ho}호</p>
-              <span className="text-[10px] bg-primary/20 text-primary-foreground px-2 py-0.5 rounded-full font-medium">입주 예정</span>
-            </div>
-            <h2 className="text-lg font-bold mt-1">환영합니다!</h2>
-          </div>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium opacity-80">{resident.dong}동 {resident.ho}호</p>
+          <span className="text-[10px] bg-primary/20 text-primary-foreground px-2 py-0.5 rounded-full font-medium">입주 예정</span>
         </div>
+        <h2 className="text-lg font-bold mt-1">환영합니다!</h2>
       </div>
 
-      {/* Offline drafts sync banner */}
+      {/* 오프라인 임시저장 */}
       {drafts.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -187,15 +227,13 @@ const HomePage = () => {
           <button onClick={() => navigate("/notice")} className="text-sm text-primary font-medium">전체보기 →</button>
         </div>
         <div className="bg-card rounded-xl overflow-hidden shadow-sm border border-border divide-y divide-border">
-          {[
-            { badge: "공지", badgeClass: "bg-primary/15 text-primary", title: "입주 오리엔테이션 안내", date: "2026.03.28" },
-            { badge: "안내문", badgeClass: "bg-success/15 text-success", title: "잔금 납부 및 등기 절차 안내", date: "2026.03.25" },
-            { badge: "동의서", badgeClass: "bg-warning/15 text-warning", title: "개인정보 수집·이용 동의서", date: "2026.03.20" },
-          ].map((item, i) => (
+          {notices.map((item, i) => (
             <button key={i} onClick={() => navigate("/notice")}
               className="w-full flex items-center justify-between py-3 px-4 text-left hover:bg-muted/30 transition-colors">
               <div className="flex items-center gap-2 min-w-0">
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${item.badgeClass}`}>{item.badge}</span>
+                <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${BADGE_CLASS[item.badge_type]}`}>
+                  {item.badge}
+                </span>
                 <span className="text-sm font-medium text-foreground truncate">{item.title}</span>
               </div>
               <span className="text-xs text-muted-foreground shrink-0 ml-2">{item.date}</span>
@@ -216,31 +254,25 @@ const HomePage = () => {
             <ClipboardList className="w-3 h-3" /> 접수하기
           </button>
         </div>
-        {loadingDefects ? (
-          <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-primary/10 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-primary">{statusCounts.접수완료}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">접수완료</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "접수완료", count: statusCounts.접수완료, color: "primary" },
+            { label: "처리중",   count: statusCounts.처리중,   color: "warning" },
+            { label: "완료",     count: statusCounts.완료,     color: "success" },
+          ].map(({ label, count, color }) => (
+            <div key={label} className={`bg-${color}/10 rounded-lg p-3 text-center`}>
+              <p className={`text-2xl font-bold text-${color}`}>{count}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{label}</p>
             </div>
-            <div className="bg-warning/10 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-warning">{statusCounts.처리중}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">처리중</p>
-            </div>
-            <div className="bg-success/10 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-success">{statusCounts.완료}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">완료</p>
-            </div>
-          </div>
-        )}
+          ))}
+        </div>
         <button onClick={() => setShowDefectList(true)}
           className="w-full flex items-center justify-center gap-1 mt-3 pt-3 border-t border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
           <ListChecks className="w-3.5 h-3.5" /> 나의 접수 내역 보기 <ChevronRight className="w-3 h-3" />
         </button>
       </div>
 
-      {/* 진행률 */}
+      {/* 입주 진행률 */}
       <button onClick={() => setShowChecklist(true)}
         className="w-full bg-card rounded-xl p-4 mb-3 shadow-sm border border-border text-left active:scale-[0.99] transition-transform">
         <div className="flex items-center justify-between mb-3">
@@ -251,14 +283,16 @@ const HomePage = () => {
           </div>
         </div>
         <Progress value={progressPercent} className="h-3" />
-        <p className="text-xs text-muted-foreground mt-2">{completedCount}/{checklistItems.length}개 항목 완료</p>
+        <p className="text-xs text-muted-foreground mt-2">{completedCount}/{checklist.length}개 항목 완료</p>
       </button>
 
       {/* 입주 당일 가이드 */}
       <button onClick={() => setShowMoveInGuide(true)}
         className="w-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 text-left active:scale-[0.99] transition-transform mt-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center"><span className="text-lg">🏠</span></div>
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+            <span className="text-lg">🏠</span>
+          </div>
           <div>
             <p className="text-sm font-bold text-foreground">입주 당일 가이드</p>
             <p className="text-[10px] text-muted-foreground">준비할 것들을 확인하세요</p>
@@ -269,119 +303,92 @@ const HomePage = () => {
 
       {/* 슬라이드 패널: 하자 접수 내역 */}
       {showDefectList && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowDefectList(false)} />
-          <div className="relative w-full max-w-[390px] bg-background rounded-t-2xl shadow-xl animate-slide-up max-h-[75vh] flex flex-col">
-            <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-muted-foreground/30" /></div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-              <h3 className="text-base font-bold text-foreground">나의 하자 접수 내역</h3>
-              <button onClick={() => setShowDefectList(false)}><X className="w-5 h-5 text-muted-foreground" /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {loadingDefects ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-              ) : defects.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">접수된 하자가 없습니다</p>
-              ) : (
-                <div className="space-y-3">
-                  {defects.map((d) => (
-                    <div key={d.receipt_no} className="flex items-center justify-between bg-muted/30 rounded-xl px-4 py-3 border border-border">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground">{d.receipt_no}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{d.mid_category || ""} · {d.location}</p>
-                      </div>
-                      <span className={cn("text-sm font-bold shrink-0", statusColorMap[d.status] || "text-muted-foreground")}>{d.status}</span>
-                    </div>
-                  ))}
+        <SlidePanel title="나의 하자 접수 내역" onClose={() => setShowDefectList(false)}
+          footer={
+            <button onClick={() => { setShowDefectList(false); navigate("/defect"); }}
+              className="w-full bg-primary text-primary-foreground rounded-xl py-3 text-sm font-bold active:scale-[0.98] transition-transform">
+              새 하자 접수하기
+            </button>
+          }>
+          {defects.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">접수된 하자가 없습니다</p>
+          ) : (
+            <div className="space-y-3">
+              {defects.map((d) => (
+                <div key={d.receipt_no}
+                  className="flex items-center justify-between bg-muted/30 rounded-xl px-4 py-3 border border-border">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">{d.receipt_no}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{d.mid_category || ""} · {d.location}</p>
+                  </div>
+                  <span className={cn("text-sm font-bold shrink-0", STATUS_COLOR[d.status] || "text-muted-foreground")}>
+                    {d.status}
+                  </span>
                 </div>
-              )}
+              ))}
             </div>
-            <div className="px-5 py-4 border-t border-border">
-              <button onClick={() => { setShowDefectList(false); navigate("/defect"); }}
-                className="w-full bg-primary text-primary-foreground rounded-xl py-3 text-sm font-bold active:scale-[0.98] transition-transform">
-                새 하자 접수하기
-              </button>
-            </div>
-          </div>
-        </div>
+          )}
+        </SlidePanel>
       )}
 
       {/* 슬라이드 패널: 체크리스트 */}
       {showChecklist && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowChecklist(false)} />
-          <div className="relative w-full max-w-[390px] bg-background rounded-t-2xl shadow-xl animate-slide-up max-h-[75vh] flex flex-col">
-            <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-muted-foreground/30" /></div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-              <h3 className="text-base font-bold text-foreground">입주 체크리스트</h3>
-              <button onClick={() => setShowChecklist(false)}><X className="w-5 h-5 text-muted-foreground" /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-muted-foreground">{completedCount}/{checklistItems.length}개 완료</span>
-                <span className="text-lg font-bold text-primary">{progressPercent}%</span>
-              </div>
-              <Progress value={progressPercent} className="h-3 mb-5" />
-              <ul className="space-y-3">
-                {checklistItems.map((item) => (
-                  <li key={item.id} className="flex items-center gap-3 bg-muted/30 rounded-xl px-4 py-3 border border-border">
-                    {item.done ? <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" /> : <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
-                    <span className={cn("text-sm flex-1", item.done ? "text-foreground" : "text-muted-foreground")}>{item.label}</span>
-                    {item.done ? (
-                      <span className="text-xs font-bold text-success">완료</span>
-                    ) : (
-                      <button onClick={() => { setShowChecklist(false); navigate(item.path); }}
-                        className="text-xs font-bold text-primary border border-primary/40 bg-primary/10 px-2.5 py-1 rounded-lg active:scale-95 transition-transform">
-                        바로가기 →
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <SlidePanel title="입주 체크리스트" onClose={() => setShowChecklist(false)}>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-muted-foreground">{completedCount}/{checklist.length}개 완료</span>
+            <span className="text-lg font-bold text-primary">{progressPercent}%</span>
           </div>
-        </div>
+          <Progress value={progressPercent} className="h-3 mb-5" />
+          <ul className="space-y-3">
+            {checklist.map((item) => (
+              <li key={item.id}
+                className="flex items-center gap-3 bg-muted/30 rounded-xl px-4 py-3 border border-border">
+                {item.done
+                  ? <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                  : <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
+                <span className={cn("text-sm flex-1", item.done ? "text-foreground" : "text-muted-foreground")}>
+                  {item.label}
+                </span>
+                {item.done ? (
+                  <span className="text-xs font-bold text-success">완료</span>
+                ) : (
+                  <button onClick={() => { setShowChecklist(false); navigate(item.path); }}
+                    className="text-xs font-bold text-primary border border-primary/40 bg-primary/10 px-2.5 py-1 rounded-lg active:scale-95 transition-transform">
+                    바로가기 →
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </SlidePanel>
       )}
 
       {/* 슬라이드 패널: 입주 당일 가이드 */}
       {showMoveInGuide && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMoveInGuide(false)} />
-          <div className="relative w-full max-w-[390px] bg-background rounded-t-2xl shadow-xl animate-slide-up max-h-[85vh] flex flex-col">
-            <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-muted-foreground/30" /></div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-              <h3 className="text-base font-bold text-foreground">🏠 입주 당일 가이드</h3>
-              <button onClick={() => setShowMoveInGuide(false)}><X className="w-5 h-5 text-muted-foreground" /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              <div className="space-y-3">
-                {[
-                  { step: "01", icon: "🔑", title: "열쇠 수령", desc: "입주지원센터 방문 → 신분증 + 입주증 지참" },
-                  { step: "02", icon: "🚗", title: "주차 배정 확인", desc: "배정 주차구역 확인 후 차량 이동" },
-                  { step: "03", icon: "🔥", title: "가스 개통 신청", desc: "도시가스 앱 또는 전화 신청 (당일 가능)" },
-                  { step: "04", icon: "💡", title: "전기·수도 명의 변경", desc: "한전 고객센터 123 / 수도사업소 연락" },
-                  { step: "05", icon: "📦", title: "이사 완료 후 공용부 확인", desc: "엘리베이터·복도 파손 여부 확인" },
-                  { step: "06", icon: "💰", title: "관리비 예치금 납부", desc: "미납 시 앱 납부 탭에서 확인" },
-                ].map((item) => (
-                  <div key={item.step} className="flex items-start gap-3 bg-muted/30 rounded-xl px-4 py-3 border border-border">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-base">{item.icon}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground">{item.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium shrink-0">{item.step}</span>
-                  </div>
-                ))}
+        <SlidePanel title="🏠 입주 당일 가이드" onClose={() => setShowMoveInGuide(false)}>
+          <div className="space-y-3">
+            {MOVE_IN_GUIDE.map((item, i) => (
+              <div key={i}
+                className="flex items-start gap-3 bg-muted/30 rounded-xl px-4 py-3 border border-border">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-base">{item.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">{item.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                </div>
+                <span className="text-[10px] text-muted-foreground font-medium shrink-0">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
               </div>
-              <div className="mt-4 bg-primary/5 border border-primary/10 rounded-lg px-3 py-2">
-                <p className="text-xs text-muted-foreground">💡 문의: 입주지원센터 1588-0000 (평일 09~18시)</p>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
+          <div className="mt-4 bg-primary/5 border border-primary/10 rounded-lg px-3 py-2">
+            <p className="text-xs text-muted-foreground">💡 문의: 입주지원센터 1588-0000 (평일 09~18시)</p>
+          </div>
+        </SlidePanel>
       )}
+
     </MobileLayout>
   );
 };
