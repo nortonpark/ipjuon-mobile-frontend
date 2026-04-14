@@ -4,7 +4,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { PushNotifications } from "@capacitor/push-notifications";
+import { PushNotifications } from "@capacitor/push-notifications";  // ← 추가
+
 import { Capacitor } from "@capacitor/core";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
@@ -30,41 +31,38 @@ import OnboardingPage from "./pages/OnboardingPage";
 
 const queryClient = new QueryClient();
 
-// ─── 푸시 알림 초기화 ─────────────────────────────
 const initPushNotifications = async () => {
   if (!Capacitor.isNativePlatform()) return;
 
-  const permission = await PushNotifications.requestPermissions();
-  if (permission.receive !== "granted") return;
+  const { receive } = await PushNotifications.requestPermissions();
+  if (receive !== "granted") {
+    console.warn("FCM 권한 거부됨");
+    return;
+  }
 
   await PushNotifications.register();
 
-  // FCM 토큰 수신
   PushNotifications.addListener("registration", (token) => {
     console.log("FCM Token:", token.value);
-    // TODO: 백엔드로 토큰 전송
-    // api.post("/api/residents/me/fcm-token", { token: token.value });
-  });
-
-  // 알림 수신 (포그라운드)
-  PushNotifications.addListener("pushNotificationReceived", (notification) => {
-    console.log("Push received:", notification);
-  });
-
-  // 알림 탭 (백그라운드에서 클릭)
-  PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-    console.log("Push action:", action);
+    localStorage.setItem("fcm_token", token.value);
   });
 
   PushNotifications.addListener("registrationError", (error) => {
     console.error("FCM registration error:", error);
   });
+
+  PushNotifications.addListener("pushNotificationReceived", (notification) => {
+    console.log("Push received:", notification);
+  });
+
+  PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+    console.log("Push action:", action);
+  });
 };
 
 const App = () => {
-
   useEffect(() => {
-    initPushNotifications();
+    initPushNotifications(); 
   }, []);
 
   return (

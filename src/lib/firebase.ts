@@ -1,13 +1,12 @@
-import { initializeApp } from "firebase/app";
-import { getMessaging } from "firebase/messaging";
+import { initializeApp } from 'firebase/app';
+import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyD-bGtWDy2diw9yA8qDv7L-KjBk-cZgqQE",
+  projectId: "ipjuon",
+  storageBucket: "ipjuon.firebasestorage.app",
+  messagingSenderId: "371887948376",
+  appId: "1:371887948376:android:b1e17940eece1ae5c4402d"
 };
 
 const app = initializeApp(firebaseConfig);
