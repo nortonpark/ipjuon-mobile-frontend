@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { defectApi, homeApi } from "@/lib/api";
 import { useOfflineDrafts } from "@/hooks/useOfflineDrafts";
 import { DashboardData } from "@/lib/api";
+import { useFcmToken } from "@/hooks/useFcmToken";
 
 // ─── 타입 ─────────────────────────────────────────────
 interface DefectRow {
@@ -94,6 +95,8 @@ const HomePage = () => {
   const [showDefectList, setShowDefectList] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [showMoveInGuide, setShowMoveInGuide] = useState(false);
+
+  useFcmToken();  // 앱 실행 시 자동 토큰 전송
 
   useEffect(() => {
     Promise.all([

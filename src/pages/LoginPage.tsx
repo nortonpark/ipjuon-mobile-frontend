@@ -162,10 +162,28 @@ const LoginPage = () => {
 
               <Input
                 placeholder="6자리 인증번호 입력"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={6}
+                value={otp}
+                onChange={(e) => {
+                  const onlyNums = e.target.value.replace(/\D/g, "");
+                  setOtp(onlyNums);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleVerifyOtp();
+                    return;
+                  }
+                  // 숫자, 제어키 외 차단
+                  if (
+                    !/[0-9]/.test(e.key) &&
+                    !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
                 disabled={expired}
                 className={`h-14 rounded-2xl border-gray-200 px-4 text-base text-center tracking-widest focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${
                   expired
