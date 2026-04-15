@@ -35,17 +35,21 @@ const MyPage = () => {
       try {
         const resident = await residentApi.getMe();
         if (resident) {
-          setName(resident.name || "");
-          setPhone(resident.phone || "");
-          setCarNumber(resident.car_number || "");
-          setUnitNumber(resident.unit_id || "");
-          setNotifications({
-            notify_notice: resident.notify_notice ?? true,
-            notify_payment: resident.notify_payment ?? true,
-            notify_defect: resident.notify_defect ?? true,
-            notify_event: resident.notify_event ?? false,
-            notify_move_in: resident.notify_move_in ?? true,
-          });
+        setName(resident.name || "");
+        setPhone(resident.phone || "");
+        setCarNumber(resident.carNumber || "");
+        setUnitNumber(
+          resident.dong && resident.ho
+            ? `${resident.dong}동 ${resident.ho}호`
+            : ""
+        );
+        setNotifications({
+          notify_notice:  resident.notifyNotice  ?? true,
+          notify_payment: resident.notifyPayment ?? true,
+          notify_defect:  resident.notifyDefect  ?? true,
+          notify_event:   resident.notifyEvent   ?? false,
+          notify_move_in: resident.notifyMoveIn  ?? true,
+        });
         }
       } catch {
         // 오류 시 기본값 유지
@@ -55,6 +59,14 @@ const MyPage = () => {
     };
     fetchData();
   }, []);
+
+  const NOTIFY_KEY_MAP: Record<string, string> = {
+    notify_notice:  "notifyNotice",
+    notify_payment: "notifyPayment",
+    notify_defect:  "notifyDefect",
+    notify_event:   "notifyEvent",
+    notify_move_in: "notifyMoveIn",
+  };
 
   const toggleNotification = async (key: keyof typeof notifications) => {
     const newValue = !notifications[key];
@@ -107,16 +119,19 @@ const MyPage = () => {
     <div className="mx-auto max-w-[390px] min-h-screen bg-background flex flex-col">
       <div className="bg-navy text-white px-6 pt-14 pb-10 flex flex-col items-center">
         <div className="w-20 h-20 rounded-full border-[3px] border-primary bg-white/10 flex items-center justify-center mb-3">
-          <User className="w-10 h-10 text-white" />
+          <User className="w-10 h-10 text-foreground" />
         </div>
-        {name && <p className="text-white font-bold text-lg mt-2">{name}님</p>}
+        {name && <p className="text-foreground font-bold text-lg mt-2">{name}님</p>}
       </div>
 
       <div className="px-4 -mt-6">
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <h2 className="text-sm font-bold text-foreground mb-1">세대 정보</h2>
           <p className="text-xs text-foreground">{unitNumber}</p>
-          <p className="text-xs text-muted-foreground mt-1">연락처: {phone} · 등록차량: {carNumber}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            연락처: {phone}
+            {carNumber ? ` · 등록차량: ${carNumber}` : ""}
+          </p>
         </div>
       </div>
 

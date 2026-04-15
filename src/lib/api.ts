@@ -65,6 +65,7 @@ export const authApi = {
     if (data.token) {
       localStorage.setItem("jwt_token", data.token);
       if (data.residentId) localStorage.setItem("resident_id", data.residentId);
+      if (data.siteId) localStorage.setItem("site_id", data.siteId);
     }
     return data;
   },
@@ -103,11 +104,17 @@ export interface DashboardData {
   }[];
   notices: {
     badge: string;
+    name: string;
     badge_type: "primary" | "success" | "warning";
     title: string;
     date: string;
   }[];
 }
+
+// 공통코드 API
+export const codeApi = {
+  getList: (groupCode: string) => api.get(`/api/codes/${groupCode}`),
+};
 
 // HOME 메인화면
 export const homeApi = {
@@ -134,7 +141,15 @@ export const defectApi = {
 
 // 공지 관련
 export const noticeApi = {
-  getList: () => api.get("/api/notices"),
+  getList: (type?: string, codeMap?: Record<string, string>) => {
+    const siteId = localStorage.getItem("site_id") || "";
+    const params = new URLSearchParams({ siteId });
+    if (type && type !== "전체" && codeMap) {
+      const code = codeMap[type];
+      if (code) params.append("type", code);
+    }
+    return api.get(`/api/notices?${params}`);
+  },
   getDetail: (id: string) => api.get(`/api/notices/${id}`),
   markRead: (id: string) => api.post(`/api/notices/${id}/read`),
 };

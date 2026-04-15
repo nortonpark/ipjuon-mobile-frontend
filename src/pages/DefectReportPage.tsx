@@ -37,6 +37,15 @@ const DefectReportPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [residentId, setResidentId] = useState<string | null>(null);
 
+interface DefectApiItem {
+  receipt_no: string;
+  location: string;
+  guide_items: string[] | null;
+  is_urgent: boolean;
+  photo_count: number;
+  status: string;
+}
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -46,7 +55,7 @@ const DefectReportPage = () => {
           const defects = await defectApi.getList();
           if (Array.isArray(defects)) {
             setSubmittedDefects(
-              defects.map((d: any) => ({
+              defects.map((d: DefectApiItem) => ({
                 id: d.receipt_no,
                 location: d.location,
                 guide: Array.isArray(d.guide_items) ? d.guide_items.join(", ") : "",

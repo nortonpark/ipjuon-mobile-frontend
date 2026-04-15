@@ -121,11 +121,29 @@ const LoginPage = () => {
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">휴대폰 번호</label>
               <Input
-                placeholder="010-0000-0000"
+                placeholder="휴대폰 번호 입력 (숫자만)"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={11}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
-                className="h-14 rounded-2xl border-gray-200 bg-gray-50 px-4 text-base focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                onChange={(e) => {
+                  const onlyNums = e.target.value.replace(/\D/g, "");
+                  setPhone(onlyNums);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendOtp();
+                    return;
+                  }
+                  if (
+                    !/[0-9]/.test(e.key) &&
+                    !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                className="..."
               />
             </div>
             <Button

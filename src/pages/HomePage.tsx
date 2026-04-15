@@ -235,7 +235,7 @@ const HomePage = () => {
               className="w-full flex items-center justify-between py-3 px-4 text-left hover:bg-muted/30 transition-colors">
               <div className="flex items-center gap-2 min-w-0">
                 <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${BADGE_CLASS[item.badge_type]}`}>
-                  {item.badge}
+                  {item.name}
                 </span>
                 <span className="text-sm font-medium text-foreground truncate">{item.title}</span>
               </div>
