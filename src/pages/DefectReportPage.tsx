@@ -10,6 +10,8 @@ import InspectionChecklist from "@/components/defect/InspectionChecklist";
 import { defectApi } from "@/lib/api";
 import type { PhotoItem } from "@/components/defect/PhotoCapture";
 import { useOfflineDrafts } from "@/hooks/useOfflineDrafts";
+// import MobileLayout from "@/components/MobileLayout";
+import BottomTabBar from "@/components/BottomTabBar";
 
 interface SubmittedDefect {
   id: string;
@@ -241,7 +243,7 @@ interface DefectApiItem {
         )}
       </header>
 
-      <div className="flex-1 px-4 pt-4 pb-24 flex flex-col gap-4 overflow-y-auto">
+      <div className="flex-1 px-4 pt-4 pb-40 flex flex-col gap-4 overflow-y-auto">
         {/* Offline drafts banner */}
         {drafts.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
@@ -346,7 +348,7 @@ interface DefectApiItem {
       </div>
 
       {/* Bottom Actions */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 flex gap-3 z-50">
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 flex gap-3 z-50">
         {issueGuides.size > 0 && currentSubCategory ? (
           <>
             <Button
@@ -378,6 +380,7 @@ interface DefectApiItem {
           </Button>
         )}
       </div>
+      <BottomTabBar />
     </div>
   );
 };

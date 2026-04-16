@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
+import BottomTabBar from "@/components/BottomTabBar";
 
 interface Partner {
   logo: string;
@@ -129,6 +130,7 @@ const ServicesPage = () => {
           </div>
         )}
       </div>
+      <BottomTabBar />
     </div>
   );
 };
