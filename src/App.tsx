@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PushNotifications } from "@capacitor/push-notifications";  // ← 추가
 
@@ -53,6 +54,10 @@ const initPushNotifications = async () => {
 
   PushNotifications.addListener("pushNotificationReceived", (notification) => {
     console.log("Push received:", notification);
+    toast(notification.title ?? "새 알림", {
+        description: notification.body,
+        duration: 5000,
+    });    
   });
 
   PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
@@ -60,10 +65,28 @@ const initPushNotifications = async () => {
   });
 };
 
+declare const __APP_VERSION__: string;
+const APP_VERSION = __APP_VERSION__;
+
 const App = () => {
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
+    // 버전 바뀌면 토큰 초기화 → 재로그인 유도
+    const savedVersion = localStorage.getItem('app_version');
+    if (savedVersion !== APP_VERSION) {
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('resident_id');
+      localStorage.removeItem('site_id');
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('fcm_token');
+      localStorage.setItem('app_version', APP_VERSION);
+    }
+    setReady(true);
     initPushNotifications(); 
   }, []);
+
+  if (!ready) return null;   // ← 초기화 전 빈 화면 방지
 
   return (
     <QueryClientProvider client={queryClient}>
