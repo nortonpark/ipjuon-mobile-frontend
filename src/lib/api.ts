@@ -53,7 +53,21 @@ export const api = {
     if (!res.ok) throw new Error(`PATCH ${path} failed: ${res.status}`);
     return res.json();
   },
+
+  put: async (path: string, body?: unknown) => {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`);
+    return res.json();
+  },
 };
+
 
 // 인증 관련
 export const authApi = {
@@ -161,10 +175,32 @@ export const paymentApi = {
   confirm: (id: string) => api.post(`/api/payments/${id}/confirm`),
 };
 
-// 이사예약 관련
+// 이사/사전점검 예약 관련
 export const movingApi = {
-  getMe: () => api.get("/api/moving/me"),
-  reserve: (data: unknown) => api.post("/api/moving", data),
+  getAvailableDates: (type: string, year: number, month: number) =>
+    api.get(`/api/moving/available-dates?type=${type}&year=${year}&month=${month}`),
+
+  getMyReservation: (type: string) =>
+    api.get(`/api/moving/me?type=${type}`),
+
+  reserve: (data: {
+    type: string;
+    scheduleDate: string;
+    timeSlot: string;
+    movingCompany?: string;
+    movingPhone?: string;
+    vehicleNumber?: string;
+    memo?: string;
+  }) => api.post("/api/moving", data),
+
+  update: (id: string, data: {
+    scheduleDate: string;
+    timeSlot: string;
+    movingCompany?: string;
+    movingPhone?: string;
+    vehicleNumber?: string;
+    memo?: string;
+  }) => api.post(`/api/moving/${id}/update`, data),  // ← POST로 변경
 };
 
 // QR 관련
