@@ -108,7 +108,7 @@ const ReservationPage = () => {
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [inspectionReservation]);
+  }, [inspectionReservation, activeTab]);
 
   useEffect(() => {
     if (!moveReservation) return;
@@ -121,7 +121,7 @@ const ReservationPage = () => {
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [moveReservation]);
+  }, [moveReservation, activeTab]);
 
   // 예약 성공 후 날짜 재조회
   const refreshDates = async () => {
