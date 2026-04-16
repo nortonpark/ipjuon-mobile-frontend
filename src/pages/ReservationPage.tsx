@@ -14,7 +14,7 @@ interface AvailableDate {
 }
 
 interface MyReservation {
-  id: string;
+  id: number;
   type: string;
   scheduleDate: string;
   timeSlot: string;
@@ -50,8 +50,8 @@ const ReservationPage = () => {
   const [inspectionReservation, setInspectionReservation] = useState<MyReservation | null>(null);
   const [inspectionDate, setInspectionDate] = useState<string | null>(null);
   const [inspectionTime, setInspectionTime] = useState<string | null>(null);
-  const [inspectionEditId, setInspectionEditId] = useState<string | null>(null);
-  const [moveEditId, setMoveEditId] = useState<string | null>(null);
+  const [inspectionEditId, setInspectionEditId] = useState<number | null>(null);
+  const [moveEditId, setMoveEditId] = useState<number | null>(null);
 
 
   const [moveReservation, setMoveReservation] = useState<MyReservation | null>(null);

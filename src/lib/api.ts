@@ -149,7 +149,7 @@ export const residentApi = {
 // 하자 관련
 export const defectApi = {
   getList: () => api.get("/api/defects"),
-  getDetail: (id: string) => api.get(`/api/defects/${id}`),
+  getDetail: (id: number) => api.get(`/api/defects/${id}`),
   submit: (data: unknown) => api.post("/api/defects", data),
 };
 
@@ -164,15 +164,15 @@ export const noticeApi = {
     }
     return api.get(`/api/notices?${params}`);
   },
-  getDetail: (id: string) => api.get(`/api/notices/${id}`),
-  markRead: (id: string) => api.post(`/api/notices/${id}/read`),
+  getDetail: (id: number) => api.get(`/api/notices/${id}`),
+  markRead: (id: number) => api.post(`/api/notices/${id}/read`),
 };
 
 // 납부 관련
 export const paymentApi = {
   getList: () => api.get("/api/payments"),
-  getDetail: (id: string) => api.get(`/api/payments/${id}`),
-  confirm: (id: string) => api.post(`/api/payments/${id}/confirm`),
+  getDetail: (id: number) => api.get(`/api/payments/${id}`),
+  confirm: (id: number) => api.post(`/api/payments/${id}/confirm`),
 };
 
 // 이사/사전점검 예약 관련
@@ -193,7 +193,7 @@ export const movingApi = {
     memo?: string;
   }) => api.post("/api/moving", data),
 
-  update: (id: string, data: {
+  update: (id: number, data: {
     scheduleDate: string;
     timeSlot: string;
     movingCompany?: string;
