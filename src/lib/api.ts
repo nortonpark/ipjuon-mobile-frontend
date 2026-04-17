@@ -47,7 +47,7 @@ const request = async (
   });
 
   // 🔥 토큰 만료 또는 무효
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     handleUnauthorized();
     throw new Error("인증이 만료되었습니다. 다시 로그인해 주세요.");
   }
