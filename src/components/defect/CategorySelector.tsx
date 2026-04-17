@@ -1,18 +1,17 @@
 import { cn } from "@/lib/utils";
 // import { MainCategory, SubCategory } from "@/data/defectCategories";
 import { type MainCategoryRes, type SubCategoryRes } from "@/lib/api";
-
 import { Check } from "lucide-react";
 import FloorPlanSelector from "./FloorPlanSelector";
 
 interface CategorySelectorProps {
-  categories: MainCategory[];
+  categories: MainCategoryRes[];
   selectedMain: string;
   selectedMid: string;
   selectedSub: string;
   onSelectMain: (name: string) => void;
   onSelectMid: (name: string) => void;
-  onSelectSub: (sub: SubCategory, midName: string) => void;
+  onSelectSub: (sub: SubCategoryRes, midName: string) => void;
 }
 
 const CategorySelector = ({
