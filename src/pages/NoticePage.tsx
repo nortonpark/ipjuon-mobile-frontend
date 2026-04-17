@@ -50,7 +50,8 @@ const NoticePage = () => {
         data.forEach((c) => { map[c.name] = c.code; });
         setCodeMap(map);
       })
-      .catch(() => {
+      .catch((e) => {
+        console.error("공통코드 로딩 실패:", e);
         setFilters(["전체", "공지", "안내문", "동의서"]);
       });
   }, []);
@@ -63,7 +64,7 @@ const NoticePage = () => {
         const data = await noticeApi.getList(active, codeMap);
         setNotices(data);
       } catch (e) {
-        console.error(e);
+        console.error("공지 목록 로딩 실패:", e);
       } finally {
         setLoading(false);
       }
