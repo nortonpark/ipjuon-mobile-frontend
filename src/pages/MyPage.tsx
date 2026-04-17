@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { residentApi, authApi } from "@/lib/api";
 
+
 const MyPage = () => {
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
@@ -16,6 +17,7 @@ const MyPage = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const [unitNumber, setUnitNumber] = useState("");
   const [phone, setPhone] = useState("");
@@ -93,7 +95,7 @@ const MyPage = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogoutConfirm  = () => {
     authApi.logout();
     navigate("/login");
   };
@@ -152,7 +154,7 @@ const MyPage = () => {
       </div>
 
       <div className="px-4 py-4 pb-24 text-center">
-        <button className="text-sm text-destructive font-medium" onClick={handleLogout}>로그아웃</button>
+        <button className="text-sm text-destructive font-medium" onClick={() => setShowLogoutConfirm(true)}>로그아웃</button>
       </div>
 
       <BottomTabBar />
@@ -223,6 +225,34 @@ const MyPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 로그아웃 확인 */}
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <DialogContent className="max-w-[320px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">로그아웃</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground pt-1 pb-2">
+            정말 로그아웃 하시겠습니까?
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowLogoutConfirm(false)}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={handleLogoutConfirm}
+            >
+              로그아웃
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>      
     </div>
   );
 };
