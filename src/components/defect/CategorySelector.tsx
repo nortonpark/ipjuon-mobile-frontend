@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
-import { MainCategory, SubCategory } from "@/data/defectCategories";
+// import { MainCategory, SubCategory } from "@/data/defectCategories";
+import { type MainCategoryRes, type SubCategoryRes } from "@/lib/api";
+
 import { Check } from "lucide-react";
 import FloorPlanSelector from "./FloorPlanSelector";
 

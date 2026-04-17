@@ -227,3 +227,41 @@ export const qrApi = {
 };
 
 
+
+// ── 하자 카테고리 타입 ──
+export interface SubCategoryRes {
+  id: number;
+  name: string;
+  isUrgent: boolean;
+  guides: string[];
+}
+
+export interface MidCategoryRes {
+  id: number;
+  name: string;
+  subs: SubCategoryRes[];
+}
+
+export interface MainCategoryRes {
+  id: number;
+  name: string;
+  icon: string;
+  mids: MidCategoryRes[];
+}
+
+// ── 하자 카테고리 API ──
+export const defectCategoryApi = {
+  getCategories: (): Promise<MainCategoryRes[]> =>
+    api.get("/api/defect/categories"),
+};
+
+// ── 기존 checkUrgency 호환 유틸 ──
+export const URGENT_KEYWORDS = ["누수", "단전", "잠금장치"];
+
+export function checkUrgency(sub: SubCategoryRes, checkedGuides: string[]): boolean {
+  if (sub.isUrgent) return true;
+  return checkedGuides.some((g) =>
+    URGENT_KEYWORDS.some((kw) => g.includes(kw))
+  );
+}
+

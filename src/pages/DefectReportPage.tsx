@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { defectCategories, checkUrgency, type SubCategory } from "@/data/defectCategories";
+import { defectCategoryApi, checkUrgency, type SubCategoryRes, type MainCategoryRes } from "@/lib/api";
 import CategorySelector from "@/components/defect/CategorySelector";
 import InspectionChecklist from "@/components/defect/InspectionChecklist";
 import { defectApi } from "@/lib/api";
@@ -30,7 +30,9 @@ const DefectReportPage = () => {
   const [selectedMain, setSelectedMain] = useState("");
   const [selectedMid, setSelectedMid] = useState("");
   const [selectedSub, setSelectedSub] = useState("");
-  const [currentSubCategory, setCurrentSubCategory] = useState<SubCategory | null>(null);
+  const [currentSubCategory, setCurrentSubCategory] = useState<SubCategoryRes | null>(null);
+  const [categories, setCategories] = useState<MainCategoryRes[]>([]);
+
 
   const [issueGuides, setIssueGuides] = useState<Set<string>>(new Set());
   const [guidePhotos, setGuidePhotos] = useState<Record<string, PhotoItem[]>>({});
@@ -47,6 +49,11 @@ interface DefectApiItem {
   photo_count: number;
   status: string;
 }
+
+
+  useEffect(() => {
+    defectCategoryApi.getCategories().then(setCategories).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -94,7 +101,7 @@ interface DefectApiItem {
     setGuidePhotos({});
   };
 
-  const handleSelectSub = (sub: SubCategory) => {
+  const handleSelectSub = (sub: SubCategoryRes) => {
     setSelectedSub(sub.name);
     setCurrentSubCategory(sub);
     setIssueGuides(new Set());
@@ -278,7 +285,7 @@ interface DefectApiItem {
 
         {/* Category Selector */}
         <CategorySelector
-          categories={defectCategories}
+          categories={categories}
           selectedMain={selectedMain}
           selectedMid={selectedMid}
           selectedSub={selectedSub}

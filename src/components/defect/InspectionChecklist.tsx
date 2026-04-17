@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
-import { URGENT_KEYWORDS } from "@/data/defectCategories";
+// import { URGENT_KEYWORDS } from "@/data/defectCategories";
+import { URGENT_KEYWORDS } from "@/lib/api";
 import { AlertTriangle, Camera, MapPin, Search } from "lucide-react";
 import type { PhotoItem } from "./PhotoCapture";
 import PhotoMarkingCanvas from "./PhotoMarkingCanvas";
