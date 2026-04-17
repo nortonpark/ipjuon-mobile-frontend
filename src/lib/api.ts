@@ -1,71 +1,68 @@
+import { toast } from "sonner";
+
 // 백엔드 REST API 클라이언트
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const getToken = () => localStorage.getItem("jwt_token");
 
+// 🔥 세션 만료 토스트 공통 함수
+const showSessionExpiredToast = () => {
+  if (!window.location.pathname.includes("/login")) {
+    toast.error("세션이 만료되었습니다", {
+      description: "다시 로그인해 주세요",
+      duration: 3000,
+    });
+  }
+};
+
+// 🔥 401 처리 공통 함수
+const handleUnauthorized = () => {
+  const hadToken = !!localStorage.getItem("jwt_token");  // ← 토큰이 있었는지 기록
+
+  localStorage.removeItem("jwt_token");
+  localStorage.removeItem("resident_id");
+  localStorage.removeItem("site_id");
+  localStorage.removeItem("isLoggedIn");
+
+  if (hadToken) showSessionExpiredToast();
+
+  if (!window.location.pathname.includes("/login")) {
+    window.location.href = "/login";
+  }
+
+};
+
+const request = async (
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<any> => {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  // 🔥 토큰 만료 또는 무효
+  if (res.status === 401) {
+    handleUnauthorized();
+    throw new Error("인증이 만료되었습니다. 다시 로그인해 주세요.");
+  }
+
+  if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
+  if (res.status === 204) return null;
+  return res.json();
+};
+
 export const api = {
-  get: async (path: string) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    });
-    if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
-    return res.json();
-  },
-
-  post: async (path: string, body?: unknown) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
-    return res.json();
-  },
-
-  delete: async (path: string, body?: unknown) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
-    return res.status === 204 ? null : res.json();
-  },
-
-  patch: async (path: string, body?: unknown) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`PATCH ${path} failed: ${res.status}`);
-    return res.json();
-  },
-
-  put: async (path: string, body?: unknown) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`);
-    return res.json();
-  },
+  get: (path: string) => request("GET", path),
+  post: (path: string, body?: unknown) => request("POST", path, body),
+  put: (path: string, body?: unknown) => request("PUT", path, body),
+  patch: (path: string, body?: unknown) => request("PATCH", path, body),
+  delete: (path: string, body?: unknown) => request("DELETE", path, body),
 };
 
 
@@ -84,17 +81,38 @@ export const authApi = {
     return data;
   },
 
-  // ✅ expireOtp 수정
   expireOtp: (phone: string) =>
     api.delete("/api/auth/otp/expire", { phone }),
 
   logout: () => {
     localStorage.removeItem("jwt_token");
     localStorage.removeItem("resident_id");
+    localStorage.removeItem("site_id");
     localStorage.removeItem("isLoggedIn");
   },
 
-  isLoggedIn: () => !!localStorage.getItem("jwt_token"),
+  // 🔥 JWT payload 파싱해서 만료시간 체크
+  isLoggedIn: () => {
+    const token = localStorage.getItem("jwt_token");
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp < now) {
+        
+        // 🔥 만료 감지 → 토스트 띄우고 정리
+        showSessionExpiredToast();
+        authApi.logout();
+        return false;
+      }
+      return true;
+    } catch {
+      // 파싱 실패 = 손상된 토큰
+      authApi.logout();
+      return false;
+    }
+  },
 };
 
 

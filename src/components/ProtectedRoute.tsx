@@ -1,8 +1,10 @@
 import { Navigate } from "react-router-dom";
+import { authApi } from "@/lib/api";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem("jwt_token");
-  if (!token) return <Navigate to="/login" replace />;
+  if (!authApi.isLoggedIn()) {
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 };
 
