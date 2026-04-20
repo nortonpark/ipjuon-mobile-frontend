@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const ConsentPage = () => {
@@ -8,9 +8,20 @@ const ConsentPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSigned, setHasSigned] = useState(false);
+  const [searchParams] = useSearchParams();
+  const fromFilter = searchParams.get("filter")
 
   const now = new Date();
   const timestamp = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} KST`;
+
+  // 목록으로 돌아가는 공통 함수                                      ← 추가
+  const goToList = () => {
+    if (fromFilter) {
+      navigate(`/notice?filter=${encodeURIComponent(fromFilter)}`);
+    } else {
+      navigate("/notice");
+    }
+  };
 
   const getPos = (e: React.TouchEvent | React.MouseEvent) => {
     const canvas = canvasRef.current;
@@ -59,7 +70,7 @@ const ConsentPage = () => {
     <div className="mx-auto max-w-[390px] min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-navy text-white flex items-center h-12 px-4">
-        <button onClick={() => navigate("/notice")} className="mr-2 flex items-center gap-1">
+        <button onClick={goToList} className="mr-2 flex items-center gap-1">
           <ArrowLeft className="w-5 h-5" />
           <span className="text-xs text-white/70">공지 목록</span>
         </button>
@@ -123,12 +134,20 @@ const ConsentPage = () => {
           disabled={!hasSigned}
           onClick={() => {
             localStorage.setItem("consentSigned", "true");
-            navigate("/");
+            goToList();
           }}
           className="w-full h-14 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-base font-bold"
         >
           동의 및 서명 완료
         </Button>
+        {/* 목록으로 돌아가기 */}
+        <button
+          onClick={goToList}        
+          className="w-full h-12 rounded-xl border border-border bg-card text-foreground text-sm font-semibold hover:bg-muted transition-colors flex items-center justify-center gap-2 mt-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          목록으로
+        </button>        
       </div>
     </div>
   );

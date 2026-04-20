@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import MobileLayout from "@/components/MobileLayout";
 import { cn } from "@/lib/utils";
 import { noticeApi, codeApi } from "@/lib/api";
@@ -33,12 +33,23 @@ interface CodeItem {
 }
 
 const NoticePage = () => {
-  const [active, setActive] = useState<string>("전체");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const active = searchParams.get("filter") || "전체";  
   const [filters, setFilters] = useState<string[]>(["전체"]);
   const [codeMap, setCodeMap] = useState<Record<string, string>>({});
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // 필터 변경 핸들러
+  const handleFilterChange = (f: string) => {
+    if (f === "전체") {
+      setSearchParams({});
+    } else {
+      setSearchParams({ filter: f });
+    }
+  };
+
 
   // 공통코드 로딩
   useEffect(() => {
@@ -73,12 +84,16 @@ const NoticePage = () => {
   }, [active, codeMap]);
 
   const handleCardClick = (notice: Notice) => {
+    // 현재 필터를 상세 URL에 전달                                   ← 수정
+    const query = active !== "전체" ? `?filter=${encodeURIComponent(active)}` : "";
     if (notice.name === "동의서") {
-      navigate("/consent");
+      navigate(`/consent${query}`); 
     } else {
-      navigate(`/notice/${notice.id}`);
+      navigate(`/notice/${notice.id}${query}`);
     }
   };
+
+  
 
   return (
     <MobileLayout title="공지·안내문">
@@ -86,7 +101,7 @@ const NoticePage = () => {
         {filters.map((f) => (
           <button
             key={f}
-            onClick={() => setActive(f)}
+            onClick={() => handleFilterChange(f)}
             className={cn(
               "px-4 py-2 rounded-full text-xs font-medium transition-colors border whitespace-nowrap",
               active === f

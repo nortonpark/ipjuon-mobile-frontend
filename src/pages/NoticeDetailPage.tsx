@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { noticeApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -24,13 +24,29 @@ const NoticeDetailPage = () => {
   const navigate = useNavigate();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const fromFilter = searchParams.get("filter");
 
+  // 목록으로 돌아가는 공통 함수                                      ← 추가
+  const goToList = () => {
+    if (fromFilter) {
+      navigate(`/notice?filter=${encodeURIComponent(fromFilter)}`);
+    } else {
+      navigate("/notice");
+    }
+  };
+  
   useEffect(() => {
     const fetch = async () => {
       try {
-        const data = await noticeApi.getDetail(id!);
+        const noticeId = Number(id);
+        if (!id || isNaN(noticeId)) {
+          setLoading(false);
+          return;
+        }
+        const data = await noticeApi.getDetail(noticeId);
         setNotice(data);
-        noticeApi.markRead(id!).catch(() => {});
+        noticeApi.markRead(noticeId).catch(() => {});
       } catch (e) {
         console.error(e);
       } finally {
@@ -52,7 +68,7 @@ const NoticeDetailPage = () => {
     return (
       <div className="mx-auto max-w-[390px] min-h-screen bg-background flex flex-col">
         <header className="sticky top-0 z-40 bg-navy text-white flex items-center h-12 px-4">
-          <button onClick={() => navigate("/notice")} className="mr-2 flex items-center gap-1">
+          <button onClick={goToList} className="mr-2 flex items-center gap-1">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-xs text-white/70">목록</span>
           </button>
@@ -68,7 +84,7 @@ const NoticeDetailPage = () => {
   return (
     <div className="mx-auto max-w-[390px] min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-40 bg-navy text-white flex items-center h-12 px-4">
-        <button onClick={() => navigate("/notice")} className="mr-2 flex items-center gap-1">
+        <button onClick={goToList} className="mr-2 flex items-center gap-1">
           <ArrowLeft className="w-5 h-5" />
           <span className="text-xs text-white/70">목록</span>
         </button>
@@ -97,12 +113,24 @@ const NoticeDetailPage = () => {
 
         {notice.type === "동의서" && (
           <button
-            onClick={() => navigate("/consent")}
+            onClick={() => {
+              const query = fromFilter ? `?filter=${encodeURIComponent(fromFilter)}` : "";
+              navigate(`/consent${query}`);
+            }}
             className="w-full h-14 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-base font-bold transition-colors"
           >
             서명하러 가기
           </button>
         )}
+
+        {/* 목록으로 돌아가기 */}
+        <button
+          onClick={goToList}        
+          className="w-full h-12 rounded-xl border border-border bg-card text-foreground text-sm font-semibold hover:bg-muted transition-colors flex items-center justify-center gap-2 mt-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          목록으로
+        </button>        
       </div>
     </div>
   );
